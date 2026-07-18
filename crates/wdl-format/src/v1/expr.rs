@@ -1,13 +1,13 @@
 //! Formatting of WDL v1.x expression elements.
 
-use wdl_ast::Node::LiteralArray;
+use crate::element::FormatElement;
 use crate::Config;
 use crate::PreToken;
 use crate::TokenStream;
 use crate::Writable as _;
-use crate::element::FormatElement;
+use wdl_ast::v1::LiteralArray;
+use wdl_ast::AstNode;
 use wdl_ast::SyntaxKind;
-use wdl_ast::v1::{ImportMember, ImportMembers, ImportSource, ImportStatement};
 
 /// Formats a [`SepOption`](wdl_ast::v1::SepOption).
 ///
@@ -445,50 +445,20 @@ fn array_inline_width(element: &FormatElement) -> usize {
         .expect("`ImportMembers` element should be a node")
         .inner()
         .clone();
-    let members = ImportMembers::cast(node).expect("element should cast to `ImportMembers`");
-    let stmt = ImportStatement::cast(
-        members
-            .inner()
-            .parent()
-            .expect("`ImportMembers` should have a parent"),
-    )
-    .expect("parent should cast to `ImportStatement`");
 
-    let mut width = "import ".len();
+    let array = LiteralArray::cast(node).expect("literal array");
 
-    let member_list: Vec<_> = members.members().collect();
-    width += "{ ".len();
-    for (i, m) in member_list.iter().enumerate() {
+    let element_list: Vec<_> = array.elements().collect();
+    let mut width = "[ ".len();
+
+    for (i, e) in element_list.iter().enumerate() {
         if i > 0 {
             width += ", ".len();
         }
-        width += import_member_width(m);
+        width += e.inner().text().to_string().chars().count();
     }
-    width += " }".len();
+    width += " ]".len();
 
-    width += " from ".len();
-    match stmt.source() {
-        ImportSource::Uri(uri) => {
-            let text = uri.text().map(|t| t.text().to_string()).unwrap_or_default();
-            // NOTE: the `+ 2` accounts for the surrounding quote characters
-            // around the URI text in the rendered output.
-            width += 2 + text.len();
-        }
-        ImportSource::ModulePath(path) => {
-            width += path.text().len();
-        }
-    }
-
-    width
-}
-
-/// Computes the canonical inline width of a single selected-member entry.
-fn import_member_width(member: &ImportMember) -> usize {
-    let mut width = member.name().text().len();
-    if let Some(alias) = member.alias() {
-        width += " as ".len();
-        width += alias.text().len();
-    }
     width
 }
 
