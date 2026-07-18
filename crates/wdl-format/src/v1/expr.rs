@@ -1,5 +1,6 @@
 //! Formatting of WDL v1.x expression elements.
 
+use wdl_ast::Node::LiteralArray;
 use crate::Config;
 use crate::PreToken;
 use crate::TokenStream;
@@ -364,10 +365,7 @@ pub fn format_literal_array(
     stream: &mut TokenStream<PreToken>,
     config: &Config,
 ) {
-    let children: Vec<_> = element
-        .children()
-        .expect("literal array children")
-        .collect();
+    let mut children = element .children().expect("literal array children");
 
     let overflows = config
         .max_line_length
@@ -376,21 +374,8 @@ pub fn format_literal_array(
         .unwrap_or(false);
     let has_inner_comment = contains_comment(element);
 
-    if overflows || has_inner_comment {
-        format_literal_array_multiline(&children, stream, config)
-    } else {
-        format_literal_array_inline(&children, stream, config)
-    }
+    let multiline = overflows || has_inner_comment;
 
-}
-
-/// Emits the multiline form, with each member on its own indented line.
-fn format_literal_array_multiline(
-    children: &[&FormatElement],
-    stream: &mut TokenStream<PreToken>,
-    config: &Config,
-) {
-    let mut children = children.iter();
     let open_bracket = children.next().expect("literal array open bracket");
     assert_eq!(open_bracket.element().kind(), SyntaxKind::OpenBracket);
     (&open_bracket).write(stream, config);
@@ -414,9 +399,10 @@ fn format_literal_array_multiline(
     }
 
     let empty = items.is_empty();
-    if !empty {
+    if multiline && !empty {
         stream.increment_indent();
     }
+
     let mut commas = commas.iter();
     for item in items {
         (&item).write(stream, config);
@@ -425,22 +411,17 @@ fn format_literal_array_multiline(
         } else if config.trailing_commas {
             stream.push_literal(",".to_string(), SyntaxKind::Comma);
         }
-        stream.end_line();
+        if multiline {
+            stream.end_line();
+        } else {
+            stream.end_word();
+        }
     }
 
-    if !empty {
+    if multiline && !empty {
         stream.decrement_indent();
     }
     (&close_bracket.expect("literal array close bracket")).write(stream, config);
-}
-
-
-/// Emits the inline `[a, b, c]` form.
-fn format_literal_array_inline(
-    children: &[&FormatElement],
-    stream: &mut TokenStream<PreToken>,
-    config: &Config,
-) {
 }
 
 /// Returns `true` if the underlying syntax for `element` contains a comment
