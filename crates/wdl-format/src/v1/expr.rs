@@ -1,13 +1,14 @@
 //! Formatting of WDL v1.x expression elements.
 
-use crate::element::FormatElement;
+use wdl_ast::AstNode;
+use wdl_ast::SyntaxKind;
+use wdl_ast::v1::LiteralArray;
+
 use crate::Config;
 use crate::PreToken;
 use crate::TokenStream;
 use crate::Writable as _;
-use wdl_ast::v1::LiteralArray;
-use wdl_ast::AstNode;
-use wdl_ast::SyntaxKind;
+use crate::element::FormatElement;
 
 /// Formats a [`SepOption`](wdl_ast::v1::SepOption).
 ///
@@ -365,7 +366,7 @@ pub fn format_literal_array(
     stream: &mut TokenStream<PreToken>,
     config: &Config,
 ) {
-    let mut children = element .children().expect("literal array children");
+    let mut children = element.children().expect("literal array children");
 
     let overflows = config
         .max_line_length
