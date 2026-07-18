@@ -1,12 +1,12 @@
 //! Formatting of WDL v1.x expression elements.
 
-use wdl_ast::SyntaxKind;
-
 use crate::Config;
 use crate::PreToken;
 use crate::TokenStream;
 use crate::Writable as _;
 use crate::element::FormatElement;
+use wdl_ast::SyntaxKind;
+use wdl_ast::v1::{ImportMember, ImportMembers, ImportSource, ImportStatement};
 
 /// Formats a [`SepOption`](wdl_ast::v1::SepOption).
 ///
@@ -364,8 +364,33 @@ pub fn format_literal_array(
     stream: &mut TokenStream<PreToken>,
     config: &Config,
 ) {
-    let mut children = element.children().expect("literal array children");
+    let children: Vec<_> = element
+        .children()
+        .expect("literal array children")
+        .collect();
 
+    let overflows = config
+        .max_line_length
+        .get()
+        .map(|max| array_inline_width(element) > max)
+        .unwrap_or(false);
+    let has_inner_comment = contains_comment(element);
+
+    if overflows || has_inner_comment {
+        format_literal_array_multiline(&children, stream, config)
+    } else {
+        format_literal_array_inline(&children, stream, config)
+    }
+
+}
+
+/// Emits the multiline form, with each member on its own indented line.
+fn format_literal_array_multiline(
+    children: &[&FormatElement],
+    stream: &mut TokenStream<PreToken>,
+    config: &Config,
+) {
+    let mut children = children.iter();
     let open_bracket = children.next().expect("literal array open bracket");
     assert_eq!(open_bracket.element().kind(), SyntaxKind::OpenBracket);
     (&open_bracket).write(stream, config);
@@ -407,6 +432,83 @@ pub fn format_literal_array(
         stream.decrement_indent();
     }
     (&close_bracket.expect("literal array close bracket")).write(stream, config);
+}
+
+
+/// Emits the inline `[a, b, c]` form.
+fn format_literal_array_inline(
+    children: &[&FormatElement],
+    stream: &mut TokenStream<PreToken>,
+    config: &Config,
+) {
+}
+
+/// Returns `true` if the underlying syntax for `element` contains a comment
+/// token. `FormatElement` collation drops trivia, so the inline-vs-multiline
+/// decision peeks at the raw syntax instead.
+fn contains_comment(element: &FormatElement) -> bool {
+    let Some(node) = element.element().as_node() else {
+        return false;
+    };
+    node.inner()
+        .children_with_tokens()
+        .any(|c| c.kind() == SyntaxKind::Comment)
+}
+
+/// Computes the canonical inline width of the enclosing `ImportStatement`
+/// as this formatter would emit it, ignoring trivia in the source span.
+fn array_inline_width(element: &FormatElement) -> usize {
+    let node = element
+        .element()
+        .as_node()
+        .expect("`ImportMembers` element should be a node")
+        .inner()
+        .clone();
+    let members = ImportMembers::cast(node).expect("element should cast to `ImportMembers`");
+    let stmt = ImportStatement::cast(
+        members
+            .inner()
+            .parent()
+            .expect("`ImportMembers` should have a parent"),
+    )
+    .expect("parent should cast to `ImportStatement`");
+
+    let mut width = "import ".len();
+
+    let member_list: Vec<_> = members.members().collect();
+    width += "{ ".len();
+    for (i, m) in member_list.iter().enumerate() {
+        if i > 0 {
+            width += ", ".len();
+        }
+        width += import_member_width(m);
+    }
+    width += " }".len();
+
+    width += " from ".len();
+    match stmt.source() {
+        ImportSource::Uri(uri) => {
+            let text = uri.text().map(|t| t.text().to_string()).unwrap_or_default();
+            // NOTE: the `+ 2` accounts for the surrounding quote characters
+            // around the URI text in the rendered output.
+            width += 2 + text.len();
+        }
+        ImportSource::ModulePath(path) => {
+            width += path.text().len();
+        }
+    }
+
+    width
+}
+
+/// Computes the canonical inline width of a single selected-member entry.
+fn import_member_width(member: &ImportMember) -> usize {
+    let mut width = member.name().text().len();
+    if let Some(alias) = member.alias() {
+        width += " as ".len();
+        width += alias.text().len();
+    }
+    width
 }
 
 /// Formats a [`LiteralMapItem`](wdl_ast::v1::LiteralMapItem).
