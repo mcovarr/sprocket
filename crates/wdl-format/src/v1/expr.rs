@@ -373,9 +373,8 @@ pub fn format_literal_array(
         .get()
         .map(|max| array_inline_width(element) > max)
         .unwrap_or(false);
-    let has_inner_comment = contains_comment(element);
 
-    let multiline = overflows || has_inner_comment;
+    let multiline = overflows || contains_comment(element);
 
     let open_bracket = children.next().expect("literal array open bracket");
     assert_eq!(open_bracket.element().kind(), SyntaxKind::OpenBracket);
@@ -405,17 +404,22 @@ pub fn format_literal_array(
     }
 
     let mut commas = commas.iter();
-    for item in items {
+    for (i, item) in items.iter().enumerate() {
         (&item).write(stream, config);
-        if let Some(comma) = commas.next() {
-            (comma).write(stream, config);
-        } else if config.trailing_commas {
-            stream.push_literal(",".to_string(), SyntaxKind::Comma);
-        }
+
         if multiline {
+            if let Some(comma) = commas.next() {
+                (comma).write(stream, config);
+            } else if config.trailing_commas {
+                stream.push_literal(",".to_string(), SyntaxKind::Comma);
+            }
             stream.end_line();
         } else {
-            stream.end_word();
+            let is_last = i == items.len() - 1;
+            if !is_last {
+                stream.push_literal(",".to_string(), SyntaxKind::Comma);
+                stream.end_word();
+            }
         }
     }
 
@@ -450,7 +454,7 @@ fn array_inline_width(element: &FormatElement) -> usize {
     let array = LiteralArray::cast(node).expect("literal array");
 
     let element_list: Vec<_> = array.elements().collect();
-    let mut width = "[ ".len();
+    let mut width = "[".len();
 
     for (i, e) in element_list.iter().enumerate() {
         if i > 0 {
@@ -458,7 +462,7 @@ fn array_inline_width(element: &FormatElement) -> usize {
         }
         width += e.inner().text().to_string().chars().count();
     }
-    width += " ]".len();
+    width += "]".len();
 
     width
 }
