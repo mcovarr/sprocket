@@ -374,7 +374,7 @@ pub fn format_literal_array(
         .map(|max| array_inline_width(element) > max)
         .unwrap_or(false);
 
-    let multiline = overflows || contains_comment(element);
+    let multiline = overflows || contains_element_requiring_multiline(element);
 
     let open_bracket = children.next().expect("literal array open bracket");
     assert_eq!(open_bracket.element().kind(), SyntaxKind::OpenBracket);
@@ -429,25 +429,32 @@ pub fn format_literal_array(
     (&close_bracket.expect("literal array close bracket")).write(stream, config);
 }
 
-/// Returns `true` if the underlying syntax for `element` contains a comment
-/// token. `FormatElement` collation drops trivia, so the inline-vs-multiline
-/// decision peeks at the raw syntax instead.
-fn contains_comment(element: &FormatElement) -> bool {
+/// Returns `true` if the underlying syntax for `element` contains a direct
+/// child (comment, map/object/struct literal) that forces the array to be
+/// formatted multiline.
+fn contains_element_requiring_multiline(element: &FormatElement) -> bool {
     let Some(node) = element.element().as_node() else {
         return false;
     };
-    node.inner()
-        .children_with_tokens()
-        .any(|c| c.kind() == SyntaxKind::Comment)
+
+    node.inner().children_with_tokens().any(|c| {
+        matches!(
+            c.kind(),
+            SyntaxKind::Comment
+                | SyntaxKind::LiteralMapNode
+                | SyntaxKind::LiteralObjectNode
+                | SyntaxKind::LiteralStructNode
+        )
+    })
 }
 
-/// Computes the canonical inline width of the enclosing `ImportStatement`
+/// Computes the canonical inline width of the enclosing `LiteralArray`
 /// as this formatter would emit it, ignoring trivia in the source span.
 fn array_inline_width(element: &FormatElement) -> usize {
     let node = element
         .element()
         .as_node()
-        .expect("`ImportMembers` element should be a node")
+        .expect("`LiteralArray` element should be a node")
         .inner()
         .clone();
 
