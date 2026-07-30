@@ -368,6 +368,9 @@ pub fn format_literal_array(
 ) {
     let mut children = element.children().expect("literal array children");
 
+    // Measure before the open bracket is emitted; `array_inline_width` counts it.
+    let (column, closers) = line_position(stream, config);
+
     let open_bracket = children.next().expect("literal array open bracket");
     assert_eq!(open_bracket.element().kind(), SyntaxKind::OpenBracket);
     (&open_bracket).write(stream, config);
@@ -393,7 +396,7 @@ pub fn format_literal_array(
     let overflows = config
         .max_line_length
         .get()
-        .map(|max| array_inline_width(&items, config) >= max / 2)
+        .map(|max| column + array_inline_width(&items, config) + closers > max)
         .unwrap_or(false);
 
     let multiline = overflows || contains_element_requiring_multiline(element);
@@ -464,21 +467,74 @@ fn array_inline_width(children: &[FormatElement], config: &Config) -> usize {
     width
 }
 
-/// Returns the formatted (whitespace-invariant) width of one element.
-/// Mirrors Formatter::to_stream, but runs with an unlimited line length
-/// so the Postprocessor inserts no width breaks for a single-line render.
+/// Returns the formatted (whitespace-invariant) width of one element,
+/// as it would render on a single line.
 fn formatted_flat_width(element: &FormatElement, config: &Config) -> usize {
-    // Config is Copy, and MaxLineLength(None) means "unlimited".
+    // Config is Copy, and MaxLineLength(None) means "unlimited", so nested
+    // constructs measure flat too.
     let mut flat_config = *config;
-    let no_max_line_length = MaxLineLength::try_new(None).unwrap();
-    flat_config.max_line_length = no_max_line_length;
+    flat_config.max_line_length = MaxLineLength::try_new(None).unwrap();
 
     let mut stream = TokenStream::<PreToken>::default();
     element.write(&mut stream, &flat_config);
+    // `end_line()` here as we are measuring just the width of this element, no additional space.
     stream.end_line();
-    let post = Postprocessor::default().run(stream, &flat_config);
 
-    post.iter().map(|t| t.width(&flat_config)).sum()
+    flat_width(stream, config)
+}
+
+/// Sums the rendered width of `stream`, laid out with no width breaks.
+fn flat_width(stream: TokenStream<PreToken>, config: &Config) -> usize {
+    let mut flat_config = *config;
+    flat_config.max_line_length = MaxLineLength::try_new(None).unwrap();
+
+    Postprocessor::default()
+        .run(stream, &flat_config)
+        .iter()
+        .map(|t| t.width(&flat_config))
+        .sum()
+}
+
+/// Returns the column the next token will occupy, and the number of
+/// delimiters left open on this line that must be closed after it.
+fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usize) {
+    let mut level = 0usize;
+    let mut tail_start = 0usize;
+    for (i, t) in stream.iter().enumerate() {
+        match t {
+            PreToken::IndentStart => level += 1,
+            PreToken::IndentEnd => level = level.saturating_sub(1),
+            PreToken::LineEnd | PreToken::BlankLine => tail_start = i + 1,
+            _ => {}
+        }
+    }
+
+    let mut tail = TokenStream::<PreToken>::default();
+    let mut open = 0usize;
+    for t in stream.iter().skip(tail_start) {
+        match t {
+            PreToken::IndentStart | PreToken::IndentEnd => continue,
+            PreToken::Literal(_, kind) => match kind {
+                SyntaxKind::OpenParen | SyntaxKind::OpenBracket | SyntaxKind::OpenBrace => {
+                    open += 1
+                }
+                SyntaxKind::CloseParen | SyntaxKind::CloseBracket | SyntaxKind::CloseBrace => {
+                    open = open.saturating_sub(1)
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        tail.push(t.clone());
+    }
+    // `Postprocessor::run` trims trailing whitespace before the newline
+    // (post.rs:374), which would drop the space preceding the array. Anchor
+    // it with the bracket about to be emitted, then discount that bracket.
+    tail.push_literal("[".to_string(), SyntaxKind::OpenBracket);
+    tail.end_line();
+
+    let prefix = flat_width(tail, config).saturating_sub("[".len());
+    (level * config.indent.num() + prefix, open)
 }
 
 /// Formats a [`LiteralMapItem`](wdl_ast::v1::LiteralMapItem).
