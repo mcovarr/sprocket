@@ -468,7 +468,7 @@ fn array_inline_width(children: &[FormatElement], config: &Config) -> usize {
 /// Mirrors Formatter::to_stream, but runs with an unlimited line length
 /// so the Postprocessor inserts no width breaks for a single-line render.
 fn formatted_flat_width(element: &FormatElement, config: &Config) -> usize {
-    // Config is Copy, and MaxLineLength(None) means "unlimited"
+    // Config is Copy, and MaxLineLength(None) means "unlimited".
     let mut flat_config = *config;
     let no_max_line_length = MaxLineLength::try_new(None).unwrap();
     flat_config.max_line_length = no_max_line_length;
@@ -476,7 +476,7 @@ fn formatted_flat_width(element: &FormatElement, config: &Config) -> usize {
     let mut stream = TokenStream::<PreToken>::default();
     element.write(&mut stream, &flat_config);
     stream.end_line();
-    let post = Postprocessor::default().run(stream, &flat_config); // no wraps
+    let post = Postprocessor::default().run(stream, &flat_config);
 
     post.iter().map(|t| t.width(&flat_config)).sum()
 }

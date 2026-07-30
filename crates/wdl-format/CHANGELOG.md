@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Better handling of "interrupting" comments so that common comment placements don't result in awkward whitespace ([#1033](https://github.com/stjude-rust-labs/sprocket/pull/1033)).
 
+#### Changed
+
+* Short array literals are now formatted on a single line instead of always
+  being split with one element per line ([#NNNN](https://github.com/stjude-rust-labs/sprocket/pull/NNNN)).
+
 ## 0.20.0 - 2026-07-15
 
 ## 0.19.0 - 2026-06-26
