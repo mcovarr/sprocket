@@ -1,10 +1,10 @@
 //! Formatting of WDL v1.x expression elements.
 
-use wdl_ast::AstNode;
 use wdl_ast::SyntaxKind;
-use wdl_ast::v1::LiteralArray;
 
 use crate::Config;
+use crate::MaxLineLength;
+use crate::Postprocessor;
 use crate::PreToken;
 use crate::TokenStream;
 use crate::Writable as _;
@@ -368,14 +368,6 @@ pub fn format_literal_array(
 ) {
     let mut children = element.children().expect("literal array children");
 
-    let overflows = config
-        .max_line_length
-        .get()
-        .map(|max| array_inline_width(element) > max)
-        .unwrap_or(false);
-
-    let multiline = overflows || contains_element_requiring_multiline(element);
-
     let open_bracket = children.next().expect("literal array open bracket");
     assert_eq!(open_bracket.element().kind(), SyntaxKind::OpenBracket);
     (&open_bracket).write(stream, config);
@@ -397,6 +389,14 @@ pub fn format_literal_array(
             }
         }
     }
+
+    let overflows = config
+        .max_line_length
+        .get()
+        .map(|max| array_inline_width(&items, config) >= max / 2)
+        .unwrap_or(false);
+
+    let multiline = overflows || contains_element_requiring_multiline(element);
 
     let empty = items.is_empty();
     if multiline && !empty {
@@ -450,28 +450,35 @@ fn contains_element_requiring_multiline(element: &FormatElement) -> bool {
 
 /// Computes the canonical inline width of the enclosing `LiteralArray`
 /// as this formatter would emit it, ignoring trivia in the source span.
-fn array_inline_width(element: &FormatElement) -> usize {
-    let node = element
-        .element()
-        .as_node()
-        .expect("`LiteralArray` element should be a node")
-        .inner()
-        .clone();
-
-    let array = LiteralArray::cast(node).expect("literal array");
-
-    let element_list: Vec<_> = array.elements().collect();
+fn array_inline_width(children: &[FormatElement], config: &Config) -> usize {
     let mut width = "[".len();
 
-    for (i, e) in element_list.iter().enumerate() {
+    for (i, e) in children.iter().enumerate() {
         if i > 0 {
             width += ", ".len();
         }
-        width += e.inner().text().to_string().chars().count();
+        width += formatted_flat_width(e, config);
     }
     width += "]".len();
 
     width
+}
+
+/// Returns the formatted (whitespace-invariant) width of one element.
+/// Mirrors Formatter::to_stream, but runs with an unlimited line length
+/// so the Postprocessor inserts no width breaks for a single-line render.
+fn formatted_flat_width(element: &FormatElement, config: &Config) -> usize {
+    // Config is Copy, and MaxLineLength(None) means "unlimited"
+    let mut flat_config = *config;
+    let no_max_line_length = MaxLineLength::try_new(None).unwrap();
+    flat_config.max_line_length = no_max_line_length;
+
+    let mut stream = TokenStream::<PreToken>::default();
+    element.write(&mut stream, &flat_config);
+    stream.end_line();
+    let post = Postprocessor::default().run(stream, &flat_config); // no wraps
+
+    post.iter().map(|t| t.width(&flat_config)).sum()
 }
 
 /// Formats a [`LiteralMapItem`](wdl_ast::v1::LiteralMapItem).
