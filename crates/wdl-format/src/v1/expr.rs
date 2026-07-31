@@ -505,7 +505,7 @@ fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usi
         match t {
             PreToken::IndentStart => level += 1,
             PreToken::IndentEnd => level = level.saturating_sub(1),
-            PreToken::LineEnd | PreToken::BlankLine => tail_start = i + 1,
+            PreToken::LineEnd | PreToken::BlankLine | PreToken::Trivia(_) => tail_start = i + 1,
             _ => {}
         }
     }
