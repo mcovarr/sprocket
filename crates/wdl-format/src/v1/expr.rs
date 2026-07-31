@@ -477,7 +477,8 @@ fn formatted_flat_width(element: &FormatElement, config: &Config) -> usize {
 
     let mut stream = TokenStream::<PreToken>::default();
     element.write(&mut stream, &flat_config);
-    // `end_line()` here as we are measuring just the width of this element, no additional space.
+    // `end_line()` here as we are measuring just the width of this element, no
+    // additional space.
     stream.end_line();
 
     flat_width(stream, config)
