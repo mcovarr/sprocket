@@ -15,8 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Changed
 
-* Short array literals are now formatted on a single line instead of always
-  being split with one element per line ([#NNNN](https://github.com/stjude-rust-labs/sprocket/pull/NNNN)).
+* Array literals are now formatted on a single line when they fit within the
+  maximum line length, instead of always being split with one element per line
+  ([#NNNN](https://github.com/stjude-rust-labs/sprocket/pull/NNNN)).
 
 ## 0.20.0 - 2026-07-15
 

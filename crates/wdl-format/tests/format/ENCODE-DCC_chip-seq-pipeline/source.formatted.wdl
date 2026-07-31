@@ -1075,10 +1075,7 @@ workflow chip {
         else if length(blacklists) > 0
         then blacklists[0]
         else blacklist2_
-    String mito_chr_name_ = select_first([
-        mito_chr_name,
-        read_genome_tsv.mito_chr_name,
-    ])
+    String mito_chr_name_ = select_first([mito_chr_name, read_genome_tsv.mito_chr_name])
     String regex_bfilt_peak_chr_name_ = select_first([
         regex_bfilt_peak_chr_name,
         read_genome_tsv.regex_bfilt_peak_chr_name,
@@ -1205,18 +1202,9 @@ workflow chip {
             fastqs_rep5_R1,
         ]
         else if length(fastqs_rep4_R1) > 0
-        then [
-            fastqs_rep1_R1,
-            fastqs_rep2_R1,
-            fastqs_rep3_R1,
-            fastqs_rep4_R1,
-        ]
+        then [fastqs_rep1_R1, fastqs_rep2_R1, fastqs_rep3_R1, fastqs_rep4_R1]
         else if length(fastqs_rep3_R1) > 0
-        then [
-            fastqs_rep1_R1,
-            fastqs_rep2_R1,
-            fastqs_rep3_R1,
-        ]
+        then [fastqs_rep1_R1, fastqs_rep2_R1, fastqs_rep3_R1]
         else if length(fastqs_rep2_R1) > 0
         then [fastqs_rep1_R1, fastqs_rep2_R1]
         else if length(fastqs_rep1_R1) > 0
@@ -1308,11 +1296,7 @@ workflow chip {
             ctl_fastqs_rep4_R1,
         ]
         else if length(ctl_fastqs_rep3_R1) > 0
-        then [
-            ctl_fastqs_rep1_R1,
-            ctl_fastqs_rep2_R1,
-            ctl_fastqs_rep3_R1,
-        ]
+        then [ctl_fastqs_rep1_R1, ctl_fastqs_rep2_R1, ctl_fastqs_rep3_R1]
         else if length(ctl_fastqs_rep2_R1) > 0
         then [ctl_fastqs_rep1_R1, ctl_fastqs_rep2_R1]
         else if length(ctl_fastqs_rep1_R1) > 0
@@ -1923,9 +1907,7 @@ workflow chip {
         Array[File] chosen_ctl_tas = if chosen_ctl_ta_id <= -2
             then []
             else if chosen_ctl_ta_subsample > 0
-            then [
-                select_first([subsample_ctl.ta_subsampled]),
-            ]
+            then [select_first([subsample_ctl.ta_subsampled])]
             else if chosen_ctl_ta_id == -1
             then [select_first([pool_ta_ctl.ta_pooled])]
             else [select_first([ctl_ta_[chosen_ctl_ta_id]])]
@@ -2095,10 +2077,7 @@ workflow chip {
         call call_peak as call_peak_pooled { input:
             peak_caller = peak_caller_,
             peak_type = peak_type_,
-            tas = flatten([
-                select_all([pool_ta.ta_pooled]),
-                chosen_ctl_ta_pooled,
-            ]),
+            tas = flatten([select_all([pool_ta.ta_pooled]), chosen_ctl_ta_pooled]),
             gensz = gensz_,
             chrsz = chrsz_,
             cap_num_peak = cap_num_peak_,
@@ -2127,10 +2106,7 @@ workflow chip {
     # macs2 signal track for pooled rep
     if (has_input_of_call_peak_pooled && !align_only_ && num_rep > 1) {
         call macs2_signal_track as macs2_signal_track_pooled { input:
-            tas = flatten([
-                select_all([pool_ta.ta_pooled]),
-                chosen_ctl_ta_pooled,
-            ]),
+            tas = flatten([select_all([pool_ta.ta_pooled]), chosen_ctl_ta_pooled]),
             gensz = gensz_,
             chrsz = chrsz_,
             pval_thresh = pval_thresh,
@@ -2151,10 +2127,7 @@ workflow chip {
         call call_peak as call_peak_ppr1 { input:
             peak_caller = peak_caller_,
             peak_type = peak_type_,
-            tas = flatten([
-                select_all([pool_ta_pr1.ta_pooled]),
-                chosen_ctl_ta_pooled,
-            ]),
+            tas = flatten([select_all([pool_ta_pr1.ta_pooled]), chosen_ctl_ta_pooled]),
             gensz = gensz_,
             chrsz = chrsz_,
             cap_num_peak = cap_num_peak_,
@@ -2188,10 +2161,7 @@ workflow chip {
         call call_peak as call_peak_ppr2 { input:
             peak_caller = peak_caller_,
             peak_type = peak_type_,
-            tas = flatten([
-                select_all([pool_ta_pr2.ta_pooled]),
-                chosen_ctl_ta_pooled,
-            ]),
+            tas = flatten([select_all([pool_ta_pr2.ta_pooled]), chosen_ctl_ta_pooled]),
             gensz = gensz_,
             chrsz = chrsz_,
             cap_num_peak = cap_num_peak_,

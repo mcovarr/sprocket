@@ -257,7 +257,9 @@ workflow seaseq {
 
         Array[File] sample_fastqfile = s_fastq
     }
-    Array[File] original_fastqfiles = flatten(select_all([sample_srafile, sample_fastqfile
+    Array[File] original_fastqfiles = flatten(select_all([
+        sample_srafile,
+        sample_fastqfile,
     ]))
 
     ### ------------------------------------------------- ###
@@ -349,17 +351,11 @@ workflow seaseq {
             }
 
             call runspp.runspp as indv_runspp { input:
-                bamfile = select_first([
-                    indv_mapping.bklist_bam,
-                    indv_mapping.sorted_bam,
-                ]),
+                bamfile = select_first([indv_mapping.bklist_bam, indv_mapping.sorted_bam]),
             }
 
             call bedtools.bamtobed as indv_bamtobed { input:
-                bamfile = select_first([
-                    indv_mapping.bklist_bam,
-                    indv_mapping.sorted_bam,
-                ]),
+                bamfile = select_first([indv_mapping.bklist_bam, indv_mapping.sorted_bam]),
             }
 
             call util.evalstats as indv_summarystats { input:
@@ -566,10 +562,7 @@ workflow seaseq {
         bedfile = forsicerbed.bedfile,
         chromsizes = samtools_faidx.chromsizes,
         genome_fraction = egs.genomefraction,
-        fragmentlength = select_first([
-            uno_bfs.readlength,
-            mergebam.avg_readlength,
-        ]),
+        fragmentlength = select_first([uno_bfs.readlength, mergebam.avg_readlength]),
         default_location = sub(basename(sample_bam), ".sorted.b.*$", "") + "/PEAKS/BROAD_peaks",
         coverage_location = sub(basename(sample_bam), ".sorted.b.*$", "") + "/COVERAGE_files/BROAD_peaks",
     }
