@@ -451,8 +451,8 @@ fn contains_element_requiring_multiline(element: &FormatElement) -> bool {
     })
 }
 
-/// Computes the canonical inline width of the enclosing `LiteralArray`
-/// as this formatter would emit it, ignoring trivia in the source span.
+/// Computes the width the `LiteralArray` would occupy rendered inline as
+/// `[a, b, c]`, as this formatter would emit it.
 fn array_inline_width(children: &[FormatElement], config: &Config) -> usize {
     let mut width = "[".len();
 
