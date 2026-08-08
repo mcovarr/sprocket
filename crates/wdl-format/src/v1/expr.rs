@@ -368,7 +368,7 @@ pub fn format_literal_array(
 ) {
     let mut children = element.children().expect("literal array children");
 
-    // Measure before the open bracket is emitted; `array_inline_width` counts it.
+    // Measure before the open bracket is emitted as `array_inline_width` counts it.
     let (column, closers) = line_position(stream, config);
 
     let open_bracket = children.next().expect("literal array open bracket");
