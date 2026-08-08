@@ -514,6 +514,8 @@ fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usi
     let mut open = 0usize;
     for t in stream.iter().skip(tail_start) {
         match t {
+            // The postprocessor line breaks for indent tokens, which we don't want here;
+            // `level` calculated above already accounts for indentation.
             PreToken::IndentStart | PreToken::IndentEnd => continue,
             PreToken::Literal(_, kind) => match kind {
                 SyntaxKind::OpenParen | SyntaxKind::OpenBracket | SyntaxKind::OpenBrace => {
@@ -528,9 +530,10 @@ fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usi
         }
         tail.push(t.clone());
     }
-    // `Postprocessor::run` trims trailing whitespace before the newline
-    // (post.rs:374), which would drop the space preceding the array. Anchor
-    // it with the bracket about to be emitted, then discount that bracket.
+    // The `end_line()` below trims any trailing whitespace before its newline,
+    // dropping the space that precedes the array literal (`TokenStream::end_line`
+    // and `Postprocessor::run`). Anchor that whitespace with the open bracket the
+    // caller is about to emit, then subtract the bracket's width.
     tail.push_literal("[".to_string(), SyntaxKind::OpenBracket);
     tail.end_line();
 
