@@ -730,11 +730,6 @@ fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usi
     let mut tail = TokenStream::<PreToken>::default();
     let mut open = 0usize;
     for t in stream.iter().skip(tail_start) {
-        // The postprocessor line breaks for indent tokens, which we don't want here;
-        // `level` calculated above already accounts for indentation.
-        if matches!(t, PreToken::IndentStart | PreToken::IndentEnd) {
-            continue;
-        }
         if let PreToken::Literal(_, kind) = t {
             match kind {
                 SyntaxKind::OpenParen
