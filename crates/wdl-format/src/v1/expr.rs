@@ -716,18 +716,23 @@ fn flat_width(stream: TokenStream<PreToken>, config: &Config) -> usize {
 /// Returns the column the next token written to `stream` would occupy, and the
 /// number of delimiters left open on that line.
 fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usize) {
-    let mut level = 0usize;
-    let mut line_level = 0usize;
+    // The level a line started now would be indented to: every `IndentStart`
+    // seen so far, less every `IndentEnd`.
+    let mut next_line_level = 0usize;
+    // The level the line currently being written was started at, which is
+    // `next_line_level` as it stood at the most recent line break. An indent
+    // opened partway through a line does not move the text already on that
+    // line, so this is the level that counts toward the column.
+    let mut current_line_level = 0usize;
+    // Index of the first token on the line currently being written.
     let mut tail_start = 0usize;
     for (i, t) in stream.iter().enumerate() {
         match t {
-            PreToken::IndentStart => level += 1,
-            PreToken::IndentEnd => level = level.saturating_sub(1),
+            PreToken::IndentStart => next_line_level += 1,
+            PreToken::IndentEnd => next_line_level = next_line_level.saturating_sub(1),
             PreToken::LineEnd | PreToken::BlankLine | PreToken::Trivia(_) => {
-                // An indent only takes effect on the line that follows it, so
-                // the current line is indented to the level as of its start.
                 tail_start = i + 1;
-                line_level = level;
+                current_line_level = next_line_level;
             }
             _ => {}
         }
@@ -761,7 +766,7 @@ fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usi
     tail.end_line();
 
     let prefix = flat_width(tail, config).saturating_sub("[".len());
-    (line_level * config.indent.num() + prefix, open)
+    (current_line_level * config.indent.num() + prefix, open)
 }
 
 /// Formats a [`LiteralMapItem`](wdl_ast::v1::LiteralMapItem).
