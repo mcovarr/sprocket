@@ -717,12 +717,18 @@ fn flat_width(stream: TokenStream<PreToken>, config: &Config) -> usize {
 /// number of delimiters left open on that line.
 fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usize) {
     let mut level = 0usize;
+    let mut line_level = 0usize;
     let mut tail_start = 0usize;
     for (i, t) in stream.iter().enumerate() {
         match t {
             PreToken::IndentStart => level += 1,
             PreToken::IndentEnd => level = level.saturating_sub(1),
-            PreToken::LineEnd | PreToken::BlankLine | PreToken::Trivia(_) => tail_start = i + 1,
+            PreToken::LineEnd | PreToken::BlankLine | PreToken::Trivia(_) => {
+                // An indent only takes effect on the line that follows it, so
+                // the current line is indented to the level as of its start.
+                tail_start = i + 1;
+                line_level = level;
+            }
             _ => {}
         }
     }
@@ -755,7 +761,7 @@ fn line_position(stream: &TokenStream<PreToken>, config: &Config) -> (usize, usi
     tail.end_line();
 
     let prefix = flat_width(tail, config).saturating_sub("[".len());
-    (level * config.indent.num() + prefix, open)
+    (line_level * config.indent.num() + prefix, open)
 }
 
 /// Formats a [`LiteralMapItem`](wdl_ast::v1::LiteralMapItem).
