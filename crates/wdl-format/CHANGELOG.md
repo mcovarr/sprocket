@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+#### Changed
+
+* Array literals are now formatted on a single line when they fit within the maximum line length, instead of always being split with one element per line ([#1143](https://github.com/stjude-rust-labs/sprocket/pull/1143)).
+
 ## 0.20.2 - 2026-08-26
 
 #### Added
@@ -20,10 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Formatting no longer panics on `input` hints keys that use dotted struct member paths, such as `foo.bar` ([#854](https://github.com/stjude-rust-labs/sprocket/issues/854)).
 * Comments within import statements are preserved ([#1034](https://github.com/stjude-rust-labs/sprocket/pull/1034)).
 * Non-directive comment ordering and blank lines are preserved ([#1034](https://github.com/stjude-rust-labs/sprocket/pull/1034)).
-
-#### Changed
-
-* Array literals are now formatted on a single line when they fit within the maximum line length, instead of always being split with one element per line ([#1143](https://github.com/stjude-rust-labs/sprocket/pull/1143)).
 
 ## 0.20.1 - 2026-08-05
 
